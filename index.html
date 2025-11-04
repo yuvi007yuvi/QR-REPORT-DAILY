@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Data Map Portal</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo {
+            height: 80px;
+            margin-right: 15px;
+        }
+        
+        #map {
+            height: 60vh;
+            width: 100%;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-width: 300px;
+            display: none;
+        }
+        
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        
+        .legend-item {
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        .controls {
+            padding: 10px;
+            background-color: #f0f0f0;
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background-color: #45a049;
+        }
+        
+        .btn.active {
+            background-color: #2196F3;
+        }
+        
+        .upload-section {
+            padding: 15px;
+            background-color: #e9e9e9;
+            text-align: center;
+        }
+        
+        .report-section {
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .report-table th, .report-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .report-table th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .report-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background-color: #ddd;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-bottom: none;
+        }
+        
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .stat-box {
+            background-color: #e9e9e9;
+            padding: 15px;
+            border-radius: 5px;
+            min-width: 150px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .report-container {
+            padding: 20px;
+        }
+        
+        .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        @media print {
+            .no-print {
+                display: none;
+            }
+            
+            .print-header {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="LOGO.png" alt="Company Logo" class="logo">
+        <span>QR Data Map Portal</span>
+    </div>
+    
+    <div class="tabs no-print">
+        <div class="tab active" onclick="showTab('map-tab')">Map View</div>
+        <div class="tab" onclick="showTab('report-tab')">Reports</div>
+        <div class="tab" onclick="showTab('print-tab')">Print Report</div>
+    </div>
+    
+    <div id="map-tab" class="tab-content active">
+        <div class="controls no-print">
+            <button class="btn" id="showAllBtn">Show All QR Codes</button>
+            <button class="btn" id="showScannedBtn">Show Only Scanned</button>
+            <button class="btn" id="showUnscannedBtn">Show Only Unscanned</button>
+        </div>
+        
+        <div id="map"></div>
+        
+        <div class="info-panel" id="infoPanel">
+            <span class="close-btn" onclick="closeInfoPanel()">×</span>
+            <h3>QR Location Details</h3>
+            <div id="qrDetails"></div>
+        </div>
+        
+        <div class="legend no-print">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: green;"></div>
+                <span>Scanned QR Code</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: red;"></div>
+                <span>Unscanned QR Code</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="report-tab" class="tab-content">
+        <div class="upload-section no-print">
+            <h3>Upload Scanned Report</h3>
+            <input type="file" id="fileInput" accept=".csv" />
+            <button class="btn" onclick="uploadFile()">Upload</button>
+            <p id="uploadStatus"></p>
+        </div>
+        
+        <div class="report-section">
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div>Total QR Codes</div>
+                    <div class="stat-value" id="totalCount">88</div>
+                </div>
+                <div class="stat-box">
+                    <div>Scanned</div>
+                    <div class="stat-value" id="scannedCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div>Unscanned</div>
+                    <div class="stat-value" id="unscannedCount">88</div>
+                </div>
+                <div class="stat-box">
+                    <div>Scan Rate</div>
+                    <div class="stat-value" id="scanRate">0%</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="scanChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="zoneChart"></canvas>
+            </div>
+            
+            <h3>Scanned QR Codes</h3>
+            <table class="report-table" id="scannedTable">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>QR Code ID</th>
+                        <th>Site Name</th>
+                        <th>Zone & Circle</th>
+                        <th>Ward</th>
+                        <th>Building/Street</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="scannedTableBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+            
+            <h3>Unscanned QR Codes</h3>
+            <table class="report-table" id="unscannedTable">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>QR Code ID</th>
+                        <th>Site Name</th>
+                        <th>Zone & Circle</th>
+                        <th>Ward</th>
+                        <th>Building/Street</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="unscannedTableBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="print-tab" class="tab-content">
+        <div class="report-container">
+            <div class="print-header">
+                <img src="LOGO.png" alt="Company Logo" class="logo" style="height: 80px; display: block; margin: 0 auto 10px;">
+                <h1>QR Data Report</h1>
+                <p>Generated on: <span id="reportDate"></span></p>
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div>Total QR Codes</div>
+                    <div class="stat-value" id="printTotalCount">88</div>
+                </div>
+                <div class="stat-box">
+                    <div>Scanned</div>
+                    <div class="stat-value" id="printScannedCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div>Unscanned</div>
+                    <div class="stat-value" id="printUnscannedCount">88</div>
+                </div>
+                <div class="stat-box">
+                    <div>Scan Rate</div>
+                    <div class="stat-value" id="printScanRate">0%</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="printScanChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="printZoneChart"></canvas>
+            </div>
+            
+            <h3>Scanned QR Codes</h3>
+            <table class="report-table" id="printScannedTable">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>QR Code ID</th>
+                        <th>Site Name</th>
+                        <th>Zone & Circle</th>
+                        <th>Ward</th>
+                        <th>Building/Street</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="printScannedTableBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+            
+            <h3>Unscanned QR Codes</h3>
+            <table class="report-table" id="printUnscannedTable">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>QR Code ID</th>
+                        <th>Site Name</th>
+                        <th>Zone & Circle</th>
+                        <th>Ward</th>
+                        <th>Building/Street</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="printUnscannedTableBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+            
+            <div class="no-print" style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="printReport()">Print Report</button>
+                <button class="btn" onclick="exportToPDF()">Export to PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // QR Data converted from CSV
+        let qrData = [
+            {sNo: "1", qrCodeId: "MVNNDG62", siteName: "VIKASH", zoneCircle: "2", ward: "20-Krishna Nagar First", buildingStreet: " Opposite Mayank Gas Agency", type: "Dhalao Ghar", latitude: "27.501018", longitude: "77.661684"},
+            {sNo: "2", qrCodeId: "MVNNDG61", siteName: "VIKASH", zoneCircle: "2", ward: "30-Krishna Nagar Second", buildingStreet: "Near Income Tax Department", type: "Dhalao Ghar", latitude: "27.495787", longitude: "77.65452"},
+            {sNo: "3", qrCodeId: "MVNNDG60", siteName: "VIKASH", zoneCircle: "2", ward: "47-Dwarkapuri", buildingStreet: "BSA  puliya", type: "Dhalao Ghar", latitude: "27.496668", longitude: "77.682024"},
+            {sNo: "4", qrCodeId: "MVNNDG67", siteName: "VEERESH-(Underground  Dustbin)", zoneCircle: "2", ward: "37-Baldevpuri", buildingStreet: "MAHOLI ROAD", type: "Dhalao Ghar", latitude: "27.481012", longitude: "77.658234"},
+            {sNo: "5", qrCodeId: "MVNNDG36", siteName: "VEERESH", zoneCircle: "1", ward: "68-Shanti Nagar", buildingStreet: "Near Bajrang Chauraha, Maholi Road", type: "Dhalao Ghar", latitude: "27.485381", longitude: "77.666568"},
+            {sNo: "6", qrCodeId: "MVNNDG35", siteName: "VEERESH", zoneCircle: "1", ward: "68-Shanti Nagar", buildingStreet: "Near Prasad Public School, Gopal Nagar", type: "Dhalao Ghar", latitude: "27.48067", longitude: "77.668699"},
+            {sNo: "7", qrCodeId: "MVNNDG34", siteName: "VEERESH", zoneCircle: "1", ward: "68-Shanti Nagar", buildingStreet: "Opposite Bajrang Dharamkanta, Maholi Road", type: "Dhalao Ghar", latitude: "27.480816", longitude: "77.65819"},
+            {sNo: "8", qrCodeId: "MVNNDG33", siteName: "VEERESH", zoneCircle: "1", ward: "68-Shanti Nagar", buildingStreet: "Opposite Chamunda Mata Mandir, Gopalnagar", type: "Dhalao Ghar", latitude: "27.473779", longitude: "77.668344"},
+            {sNo: "9", qrCodeId: "MVNNDG58", siteName: "SURENDRA", zoneCircle: "2", ward: "46-Radha Nagar", buildingStreet: "KRISHNA NAGAR ", type: "Dhalao Ghar", latitude: "27.503578", longitude: "77.657387"},
+            {sNo: "10", qrCodeId: "MVNNDG57", siteName: "SURENDRA", zoneCircle: "2", ward: "55-Govind Nagar", buildingStreet: "GOIND NAGAR", type: "Dhalao Ghar", latitude: "27.506409", longitude: "77.662988"},
+            {sNo: "11", qrCodeId: "MVNNDG26", siteName: "SUDESH", zoneCircle: "1", ward: "02-Ambedkar Nagar", buildingStreet: "get well hostpital", type: "Dhalao Ghar", latitude: "27.511248", longitude: "77.709674"},
+            {sNo: "12", qrCodeId: "MVNNDG27", siteName: "SUBHASH", zoneCircle: "1", ward: "07-Lohvan", buildingStreet: "lahuvan pokhar", type: "Dhalao Ghar", latitude: "27.513421", longitude: "77.721505"},
+            {sNo: "13", qrCodeId: "MVNNDG79", siteName: "SONVEER", zoneCircle: "3", ward: "33-Palikhera", buildingStreet: "Chandra Green Heights", type: "Dhalao Ghar", latitude: "27.477459", longitude: "77.657591"},
+            {sNo: "14", qrCodeId: "MVNNDG68", siteName: "SONVEER", zoneCircle: "3", ward: "59-Maholi Second", buildingStreet: "Pushpanjali  Road Mathura Lajpat Nagar", type: "Dhalao Ghar", latitude: "27.480218", longitude: "77.656521"},
+            {sNo: "15", qrCodeId: "MVNNDG9", siteName: "SATENDRA", zoneCircle: "4", ward: "21-Chaitanya Bihar", buildingStreet: "KAMAL MANDIR KE PASS ", type: "Dhalao Ghar", latitude: "27.563681", longitude: "77.638404"},
+            {sNo: "16", qrCodeId: "MVNNDG63", siteName: "SANJIV", zoneCircle: "2", ward: "56-Mandi Randas", buildingStreet: "DWARIKADHEESH MANDIR ", type: "Dhalao Ghar", latitude: "27.506118", longitude: "77.68409251"},
+            {sNo: "17", qrCodeId: "MVNNDG59", siteName: "SANJIV", zoneCircle: "2", ward: "58-Gau Ghat", buildingStreet: "near jay shree colony gaughat", type: "Dhalao Ghar", latitude: "27.511527", longitude: "77.675048"},
+            {sNo: "18", qrCodeId: "MVNNDG85", siteName: "SANDEEP-(UNDER GROUND)", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "NEAR NAGAR AYUKT HOME ", type: "Dhalao Ghar", latitude: "27.462215", longitude: "77.697723"},
+            {sNo: "19", qrCodeId: "MVNNDG86", siteName: "SANDEEP- (UNDERGROUND DUSTBIN)", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "CIVIL LINES ", type: "Dhalao Ghar", latitude: "27.47576", longitude: "77.694124"},
+            {sNo: "20", qrCodeId: "MVNNDG84", siteName: "SANDEEP", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "Janakpuri officer colony baccha Jail ke samne", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "21", qrCodeId: "MVNNDG83", siteName: "SANDEEP", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "chanakapuri officer colony", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "22", qrCodeId: "MVNNDG76", siteName: "SANDEEP", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "DAMODARPURA, SHANI DEV MANDIR", type: "Dhalao Ghar", latitude: "27.456258", longitude: "77.703953"},
+            {sNo: "23", qrCodeId: "MVNNDG75", siteName: "SANDEEP", zoneCircle: "3", ward: "38-Civil Lines", buildingStreet: "DAMODARPURA,DAMODARPURA GATE KE SAMNE ", type: "Dhalao Ghar", latitude: "27.453026", longitude: "77.705959"},
+            {sNo: "24", qrCodeId: "MVNNDG32", siteName: "SANDEEP", zoneCircle: "1", ward: "23-Aheer Pada", buildingStreet: "chanakapuri khatik mohalla gete ke samne", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "25", qrCodeId: "MVNNDG31", siteName: "SANDEEP", zoneCircle: "1", ward: "23-Aheer Pada", buildingStreet: "janakapuri Kalika Mandir badhpura ke samne", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "26", qrCodeId: "MVNNDG30", siteName: "SANDEEP", zoneCircle: "1", ward: "63-Maliyaan Sadar", buildingStreet: "Bengali colonyMahadev Ghat ke pas John suther", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "27", qrCodeId: "MVNNDG20", siteName: "SANDEEP", zoneCircle: "3", ward: "59-Maholi Second", buildingStreet: "Yamuna wala road XUV plant ke pass", type: "Dhalao Ghar", latitude: "27.461455", longitude: "77.674227"},
+            {sNo: "28", qrCodeId: "MVNNDG64", siteName: "SACHIN", zoneCircle: "2", ward: "16-Bakalpur", buildingStreet: "shriji baba school", type: "Dhalao Ghar", latitude: "27.498807", longitude: "77.637736"},
+            {sNo: "29", qrCodeId: "MVNNDG52", siteName: "SACHIN", zoneCircle: "2", ward: "43-Ganeshra", buildingStreet: "ganesra road sochale", type: "Dhalao Ghar", latitude: "27.509248", longitude: "77.647102"},
+            {sNo: "30", qrCodeId: "MVNNDG51", siteName: "SACHIN", zoneCircle: "2", ward: "43-Ganeshra", buildingStreet: "hariram medical", type: "Dhalao Ghar", latitude: "27.509054", longitude: "77.643672"},
+            {sNo: "31", qrCodeId: "MVNNDG50", siteName: "SACHIN", zoneCircle: "2", ward: "43-Ganeshra", buildingStreet: "CRPF Camp", type: "Dhalao Ghar", latitude: "27.509052", longitude: "77.641666"},
+            {sNo: "32", qrCodeId: "MVNNDS1", siteName: "RADHA VELLY ", zoneCircle: "2", ward: "24-Sarai Azamabad", buildingStreet: "RADHA VELLY ", type: "Dhalao Ghar", latitude: "27.520836", longitude: "77.656489"},
+            {sNo: "33", qrCodeId: "MVNNDG13", siteName: "PAWAN KUMAR", zoneCircle: "4", ward: "09-Gandhi Nagar", buildingStreet: "Telipada", type: "Dhalao Ghar", latitude: "27.577881", longitude: "77.69456"},
+            {sNo: "34", qrCodeId: "MVNNDG12", siteName: "PAWAN KUMAR", zoneCircle: "4", ward: "34-Radhaniwas", buildingStreet: "Char sampradaay", type: "Dhalao Ghar", latitude: "27.577374", longitude: "77.703101"},
+            {sNo: "35", qrCodeId: "MVNNDG11", siteName: "PAWAN KUMAR", zoneCircle: "4", ward: "70-Biharipur", buildingStreet: "JUGAL GHAT", type: "Dhalao Ghar", latitude: "27.558692", longitude: "77.688077"},
+            {sNo: "36", qrCodeId: "MVNNDG10", siteName: "PAWAN KUMAR", zoneCircle: "4", ward: "69-Ratan Chhatri", buildingStreet: "PILI KOTHI", type: "Dhalao Ghar", latitude: "27.576148", longitude: "77.685274"},
+            {sNo: "37", qrCodeId: "MVNNDG7", siteName: "PAWAN KUMAR", zoneCircle: "4", ward: "66-Keshighat", buildingStreet: "KESI GHAT KALI MANDIR", type: "Dhalao Ghar", latitude: "27.586943", longitude: "77.703918"},
+            {sNo: "38", qrCodeId: "MVNNDG14", siteName: "MANVENDRA ", zoneCircle: "4", ward: "51-Gaushala Nagar", buildingStreet: "NEAR SURYA NAMASKAR", type: "Dhalao Ghar", latitude: "27.561242", longitude: "77.682983"},
+            {sNo: "39", qrCodeId: "MVNNDG1", siteName: "MANVENDRA ", zoneCircle: "4", ward: "51-Gaushala Nagar", buildingStreet: "KAILASH NAGAR ", type: "Dhalao Ghar", latitude: "27.564192", longitude: "77.689472"},
+            {sNo: "40", qrCodeId: "MVNNDG2", siteName: "MANVENDRA", zoneCircle: "4", ward: "51-Gaushala Nagar", buildingStreet: "SANIDEV MANDIR", type: "Dhalao Ghar", latitude: "27.563997", longitude: "77.68437"},
+            {sNo: "41", qrCodeId: "MVNNDG65", siteName: "MANISH", zoneCircle: "2", ward: "03-Girdharpur", buildingStreet: "GIRDHARPUR GAO", type: "Dhalao Ghar", latitude: "27.498612", longitude: "77.635904"},
+            {sNo: "42", qrCodeId: "MVNNDG47", siteName: "MAHAVEER - UNDERGROUND DUSTBIN", zoneCircle: "1", ward: "14-Lakshmi Nagar Yamunapar", buildingStreet: "LAXMI NAGAR", type: "Dhalao Ghar", latitude: "27.506353", longitude: "77.698788"},
+            {sNo: "43", qrCodeId: "MVNNDG37", siteName: "MAHAVEER", zoneCircle: "1", ward: "53-Krishna Puri", buildingStreet: "Railway Kevin", type: "Dhalao Ghar", latitude: "27.49407", longitude: "77.686495"},
+            {sNo: "44", qrCodeId: "MVNNDG38", siteName: "JITENDRA", zoneCircle: "1", ward: "18-General ganj", buildingStreet: "ANTAPARA BALMIK BHAKTI", type: "Dhalao Ghar", latitude: "27.498088", longitude: "77.687128"},
+            {sNo: "45", qrCodeId: "MVNNDG22", siteName: "JITENDRA", zoneCircle: "1", ward: "26-Naya Nagla", buildingStreet: "BAHADURPUR", type: "Dhalao Ghar", latitude: "27.494543", longitude: "77.685012"},
+            {sNo: "46", qrCodeId: "MVNNDG21", siteName: "JITENDRA", zoneCircle: "1", ward: "26-Naya Nagla", buildingStreet: "NEAR NAYA NAGLA", type: "Dhalao Ghar", latitude: "27.488872", longitude: "77.68344"},
+            {sNo: "47", qrCodeId: "MVNNDG8", siteName: "HEMANT", zoneCircle: "4", ward: "67-Kemar Van", buildingStreet: "KABADI VALI WALI", type: "Dhalao Ghar", latitude: "27.570569", longitude: "77.684786"},
+            {sNo: "48", qrCodeId: "MVNNDG6", siteName: "HEMANT", zoneCircle: "4", ward: "67-Kemar Van", buildingStreet: "ramswaroop pandal", type: "Dhalao Ghar", latitude: "27.574971", longitude: "77.682756"},
+            {sNo: "49", qrCodeId: "MVNNDG5", siteName: "HEMANT", zoneCircle: "4", ward: "69-Ratan Chhatri", buildingStreet: "RATANCHATRI", type: "Dhalao Ghar", latitude: "27.576497", longitude: "77.685342"},
+            {sNo: "50", qrCodeId: "MVNNDG4", siteName: "HEMANT", zoneCircle: "4", ward: "13-Sunrakh", buildingStreet: "nri green", type: "Dhalao Ghar", latitude: "27.574994", longitude: "77.672917"},
+            {sNo: "51", qrCodeId: "MVNNDG3", siteName: "HEMANT", zoneCircle: "4", ward: "67-Kemar Van", buildingStreet: "sukhda bhakti", type: "Dhalao Ghar", latitude: "27.571316", longitude: "77.685132"},
+            {sNo: "52", qrCodeId: "MVNNDG24", siteName: "HARIOM", zoneCircle: "1", ward: "05-Bharatpur Gate", buildingStreet: "NEAR MACHHALI MANDI", type: "Dhalao Ghar", latitude: "27.500945", longitude: "77.676278"},
+            {sNo: "53", qrCodeId: "MVNNDG23", siteName: "HARIOM", zoneCircle: "1", ward: "05-Bharatpur Gate", buildingStreet: "MAYOR WALI GALI", type: "Dhalao Ghar", latitude: "27.499353", longitude: "77.678257"},
+            {sNo: "54", qrCodeId: "MVNNDG53", siteName: "HARIKESH", zoneCircle: "2", ward: "45-Birla Mandir", buildingStreet: "HOSPITAL BC GOYAL KE PEECHE ", type: "Dhalao Ghar", latitude: "27.527266", longitude: "77.677284"},
+            {sNo: "55", qrCodeId: "MVNNDG66", siteName: "GAURAV", zoneCircle: "2", ward: "44-Radhika Bihar", buildingStreet: "TVS POINT ,HALDIRAM KE SAMNE ", type: "Dhalao Ghar", latitude: "27.493168", longitude: "77.65721"},
+            {sNo: "56", qrCodeId: "MVNNDG46", siteName: "GAURAV", zoneCircle: "1", ward: "35-Bankhandi", buildingStreet: "RANG MANCH BUILDING ", type: "Dhalao Ghar", latitude: "27.495887", longitude: "77.680892"},
+            {sNo: "57", qrCodeId: "MVNNDG29", siteName: "GAURAV", zoneCircle: "1", ward: "35-Bankhandi", buildingStreet: "Mathura jila sahakari bank ", type: "Dhalao Ghar", latitude: "27.486326", longitude: "77.681983"},
+            {sNo: "58", qrCodeId: "MVNNDG28", siteName: "GAURAV", zoneCircle: "1", ward: "35-Bankhandi", buildingStreet: "Kishor raman inter college", type: "Dhalao Ghar", latitude: "27.49826", longitude: "77.679556"},
+            {sNo: "59", qrCodeId: "MVNNDG82", siteName: "DILIP SINGH ", zoneCircle: "3", ward: "06-Aduki", buildingStreet: "Navada school ke pass", type: "Dhalao Ghar", latitude: "27.445498", longitude: "77.688422"},
+            {sNo: "60", qrCodeId: "MVNNDG74", siteName: "DILIP SINGH ", zoneCircle: "3", ward: "10-Aurangabad First", buildingStreet: "SHAUCHALAY KE PASS", type: "Dhalao Ghar", latitude: "27.445872", longitude: "77.706472"},
+            {sNo: "61", qrCodeId: "MVNNDG73", siteName: "DILIP SINGH ", zoneCircle: "3", ward: "10-Aurangabad First", buildingStreet: "BAIRAJ MOD", type: "Dhalao Ghar", latitude: "27.435404", longitude: "77.701617"},
+            {sNo: "62", qrCodeId: "MVNNDG39", siteName: "CHARAN SINGH ", zoneCircle: "1", ward: "40-Rajkumar", buildingStreet: "SABJI MANDI,ANGOORI VATIKA MASANI ROAD", type: "Dhalao Ghar", latitude: "27.506428", longitude: "77.672245"},
+            {sNo: "63", qrCodeId: "MVNNDG25", siteName: "CHARAN SINGH ", zoneCircle: "1", ward: "22-Badhri Nagar", buildingStreet: "badri nagar, near kabristan", type: "Dhalao Ghar", latitude: "27.500674", longitude: "77.673428"},
+            {sNo: "64", qrCodeId: "MVNNDG56", siteName: "ARYAN VERMA", zoneCircle: "2", ward: "60-Jagannath Puri", buildingStreet: "POTRA KUND", type: "Dhalao Ghar", latitude: "27.50451", longitude: "77.666534"},
+            {sNo: "65", qrCodeId: "MVNNDG49", siteName: "ARJUN", zoneCircle: "2", ward: "36-Jaisingh Pura", buildingStreet: "JAISINGH PURA KHADAR", type: "Dhalao Ghar", latitude: "27.522604", longitude: "77.675687"},
+            {sNo: "66", qrCodeId: "MVNNDG48", siteName: "ARJUN", zoneCircle: "2", ward: "39-Mahavidhya Colony", buildingStreet: "HARISH RAGHAV KOTHI ", type: "Dhalao Ghar", latitude: "27.50056", longitude: "77.664748"},
+            {sNo: "67", qrCodeId: "MVNNDG45", siteName: "ANSHU", zoneCircle: "1", ward: "49-Daimpiriyal Nagar", buildingStreet: "MUKUND UTSHAB", type: "Dhalao Ghar", latitude: "27.492075", longitude: "77.68153"},
+            {sNo: "68", qrCodeId: "MVNNDG44", siteName: "ANSHU", zoneCircle: "1", ward: "49-Daimpiriyal Nagar", buildingStreet: "RAHTI BUILDING , MASOOM", type: "Dhalao Ghar", latitude: "27.493135", longitude: "77.681558"},
+            {sNo: "69", qrCodeId: "MVNNDG43", siteName: "ANSHU", zoneCircle: "1", ward: "49-Daimpiriyal Nagar", buildingStreet: "KR DEGREE COLLEGE", type: "Dhalao Ghar", latitude: "27.496142", longitude: "77.675302"},
+            {sNo: "70", qrCodeId: "MVNNDG42", siteName: "ANSHU", zoneCircle: "1", ward: "49-Daimpiriyal Nagar", buildingStreet: "NEAR RAIL LINE KAILASH NAGAR KR DEGREE COLLEGE KE PICHHE", type: "Dhalao Ghar", latitude: "27.497616", longitude: "77.673656"},
+            {sNo: "71", qrCodeId: "MVNNDG41", siteName: "ANSHU", zoneCircle: "1", ward: "49-Daimpiriyal Nagar", buildingStreet: "AKHADA PIPAL WALA ,BRIJ NAGAR", type: "Dhalao Ghar", latitude: "27.494706", longitude: "77.675738"},
+            {sNo: "72", qrCodeId: "MVNNDG78", siteName: "ANKIT", zoneCircle: "3", ward: "59-Maholi Second", buildingStreet: "Jai Gurudev Mandir Ke pass", type: "Dhalao Ghar", latitude: "27.481146", longitude: "77.656433"},
+            {sNo: "73", qrCodeId: "MVNNDG72", siteName: "ANKIT", zoneCircle: "3", ward: "01-Birjapur", buildingStreet: "Ambedkar park", type: "Dhalao Ghar", latitude: "27.457955", longitude: "77.679176"},
+            {sNo: "74", qrCodeId: "MVNNDG71", siteName: "ANKIT", zoneCircle: "3", ward: "01-Birjapur", buildingStreet: "birzapur shauchalay ke pass", type: "Dhalao Ghar", latitude: "27.456451", longitude: "77.680627"},
+            {sNo: "75", qrCodeId: "MVNNDG55", siteName: "ANIL RANA ", zoneCircle: "2", ward: "12-Radhe Shyam Colony", buildingStreet: "dalab Ghar pr hospital ke paas", type: "Dhalao Ghar", latitude: "27.526505", longitude: "77.66383"},
+            {sNo: "76", qrCodeId: "MVNNDG54", siteName: "ANIL RANA", zoneCircle: "2", ward: "24-Sarai Azamabad", buildingStreet: "BARF FACTORY KE PASS ", type: "Dhalao Ghar", latitude: "27.523914", longitude: "77.66457"},
+            {sNo: "77", qrCodeId: "MVNNDG81", siteName: "ANIL BAGHEL ", zoneCircle: "3", ward: "32-Ranchibagar", buildingStreet: "Kadam Vihar Colony Road", type: "Dhalao Ghar", latitude: "77.700171", longitude: "27.427794"},
+            {sNo: "78", qrCodeId: "MVNNDG15", siteName: "ANIL BAGHEL ", zoneCircle: "3", ward: "29-Koyla Alipur", buildingStreet: "kashiram colony mod", type: "Dhalao Ghar", latitude: "27.421098", longitude: "77.69579"},
+            {sNo: "79", qrCodeId: "MVNNDG80", siteName: "ANIL BAGHEL", zoneCircle: "3", ward: "32-Ranchibagar", buildingStreet: "SABJI MANDI ON ROAD ", type: "Dhalao Ghar", latitude: "27.424784", longitude: "77.69704"},
+            {sNo: "80", qrCodeId: "MVNNDG87", siteName: "AMAN -(UNDERGROUND DUSTBIN)", zoneCircle: "3", ward: "52-Chandrapuri", buildingStreet: "INDUSTRIAL AREA", type: "Dhalao Ghar", latitude: "27.471803", longitude: "77.664784"},
+            {sNo: "81", qrCodeId: "MVNNDG77", siteName: "AMAN", zoneCircle: "3", ward: "41-Dhaulipiau", buildingStreet: "DHOLI PIYAU ,POKHAR ", type: "Dhalao Ghar", latitude: "27.473712", longitude: "77.673807"},
+            {sNo: "82", qrCodeId: "MVNNDG70", siteName: "AMAN", zoneCircle: "3", ward: "41-Dhaulipiau", buildingStreet: "muskan hotel ke samne", type: "Dhalao Ghar", latitude: "27.479818", longitude: "77.677701"},
+            {sNo: "83", qrCodeId: "MVNNDG69", siteName: "AMAN", zoneCircle: "3", ward: "41-Dhaulipiau", buildingStreet: "Vijay baar ke samne", type: "Dhalao Ghar", latitude: "27.489002", longitude: "77.677515"},
+            {sNo: "84", qrCodeId: "MVNNDG19", siteName: "AMAN", zoneCircle: "3", ward: "57-Balajipuram", buildingStreet: "balajipuram Priyanshu janseva Kendra ke pass", type: "Dhalao Ghar", latitude: "27.451781", longitude: "77.688808"},
+            {sNo: "85", qrCodeId: "MVNNDG18", siteName: "AMAN", zoneCircle: "3", ward: "52-Chandrapuri", buildingStreet: "chandrapuri colony Chaudhary Charan Singh gate gali number 1 Mall ke paas", type: "Dhalao Ghar", latitude: "27.46006", longitude: "77.671026"},
+            {sNo: "86", qrCodeId: "MVNNDG17", siteName: "AMAN", zoneCircle: "3", ward: "52-Chandrapuri", buildingStreet: "chandrapuri colony Jyoti hospital ke samne", type: "Dhalao Ghar", latitude: "27.463074", longitude: "77.670754"},
+            {sNo: "87", qrCodeId: "MVNNDG16", siteName: "AMAN", zoneCircle: "3", ward: "52-Chandrapuri", buildingStreet: "chandrabangla industrial area Hanuman Mandir", type: "Dhalao Ghar", latitude: "27.473648", longitude: "77.665531"},
+            {sNo: "88", qrCodeId: "MVNNDG40", siteName: "ADIL MALIK", zoneCircle: "1", ward: "42-Manoharpur", buildingStreet: "MEWATI MOHALLA", type: "Dhalao Ghar", latitude: "27.5040235", longitude: "77.6748159"}
+        ];
+
+        // Scanned QR data - initially empty
+        let scannedData = [];
+
+        // Initialize the map
+        const map = L.map('map').setView([27.5, 77.67], 12);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Create marker layers
+        const scannedMarkers = L.layerGroup().addTo(map);
+        const unscannedMarkers = L.layerGroup().addTo(map);
+
+        // Chart instances
+        let scanChart = null;
+        let zoneChart = null;
+        let printScanChart = null;
+        let printZoneChart = null;
+
+        // Function to show QR details in info panel
+        function showQRDetails(qr) {
+            const infoPanel = document.getElementById('infoPanel');
+            const qrDetails = document.getElementById('qrDetails');
+            
+            // Check if this QR has been scanned
+            const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
+            const scanStatus = isScanned ? '<span style="color: green; font-weight: bold;">Scanned</span>' : '<span style="color: red; font-weight: bold;">Not Scanned</span>';
+            
+            qrDetails.innerHTML = `
+                <p><strong>Status:</strong> ${scanStatus}</p>
+                <p><strong>S.No:</strong> ${qr.sNo}</p>
+                <p><strong>QR Code ID:</strong> ${qr.qrCodeId}</p>
+                <p><strong>Site Name:</strong> ${qr.siteName}</p>
+                <p><strong>Zone & Circle:</strong> ${qr.zoneCircle}</p>
+                <p><strong>Ward:</strong> ${qr.ward}</p>
+                <p><strong>Building/Street:</strong> ${qr.buildingStreet}</p>
+                <p><strong>Type:</strong> ${qr.type}</p>
+                <p><strong>Latitude:</strong> ${qr.latitude}</p>
+                <p><strong>Longitude:</strong> ${qr.longitude}</p>
+            `;
+            
+            infoPanel.style.display = 'block';
+        }
+
+        // Function to close info panel
+        function closeInfoPanel() {
+            document.getElementById('infoPanel').style.display = 'none';
+        }
+
+        // Add markers for each QR location
+        function addMarkers() {
+            // Clear existing markers
+            scannedMarkers.clearLayers();
+            unscannedMarkers.clearLayers();
+            
+            qrData.forEach(qr => {
+                if (qr.latitude && qr.longitude) {
+                    // Check if this QR has been scanned
+                    const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
+                    
+                    // Create marker with appropriate color
+                    const markerColor = isScanned ? 'green' : 'red';
+                    const markerIcon = L.divIcon({
+                        className: 'custom-icon',
+                        html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    });
+                    
+                    const marker = L.marker([parseFloat(qr.latitude), parseFloat(qr.longitude)], {icon: markerIcon});
+                    
+                    marker.bindPopup(`
+                        <b>${qr.siteName}</b><br>
+                        QR ID: ${qr.qrCodeId}<br>
+                        Status: ${isScanned ? '<span style="color: green;">Scanned</span>' : '<span style="color: red;">Not Scanned</span>'}<br>
+                        Ward: ${qr.ward}<br>
+                        <button onclick="showQRDetailsInPanel('${qr.sNo}')">View Details</button>
+                    `);
+                    
+                    // Add to appropriate layer
+                    if (isScanned) {
+                        marker.addTo(scannedMarkers);
+                    } else {
+                        marker.addTo(unscannedMarkers);
+                    }
+                    
+                    // Add click event to show details
+                    marker.on('click', function() {
+                        showQRDetails(qr);
+                    });
+                }
+            });
+        }
+
+        // Function to show QR details (called from popup button)
+        function showQRDetailsInPanel(sNo) {
+            const qr = qrData.find(item => item.sNo === sNo);
+            if (qr) {
+                showQRDetails(qr);
+            }
+        }
+
+        // Close info panel when clicking on the map
+        map.on('click', function() {
+            closeInfoPanel();
+        });
+
+        // Filter functionality
+        document.getElementById('showAllBtn').addEventListener('click', function() {
+            showAllMarkers();
+            setActiveButton(this);
+        });
+
+        document.getElementById('showScannedBtn').addEventListener('click', function() {
+            showScannedMarkers();
+            setActiveButton(this);
+        });
+
+        document.getElementById('showUnscannedBtn').addEventListener('click', function() {
+            showUnscannedMarkers();
+            setActiveButton(this);
+        });
+
+        function showAllMarkers() {
+            if (!map.hasLayer(scannedMarkers)) {
+                map.addLayer(scannedMarkers);
+            }
+            if (!map.hasLayer(unscannedMarkers)) {
+                map.addLayer(unscannedMarkers);
+            }
+        }
+
+        function showScannedMarkers() {
+            if (!map.hasLayer(scannedMarkers)) {
+                map.addLayer(scannedMarkers);
+            }
+            if (map.hasLayer(unscannedMarkers)) {
+                map.removeLayer(unscannedMarkers);
+            }
+        }
+
+        function showUnscannedMarkers() {
+            if (map.hasLayer(scannedMarkers)) {
+                map.removeLayer(scannedMarkers);
+            }
+            if (!map.hasLayer(unscannedMarkers)) {
+                map.addLayer(unscannedMarkers);
+            }
+        }
+
+        function setActiveButton(activeBtn) {
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            activeBtn.classList.add('active');
+        }
+
+        // Tab functionality
+        function showTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show the selected tab content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Set the clicked tab as active
+            event.target.classList.add('active');
+            
+            // If switching to report tab, populate the tables and charts
+            if (tabId === 'report-tab') {
+                populateTables();
+                updateStats();
+                createCharts();
+            }
+            
+            // If switching to print tab, populate the print tables and charts
+            if (tabId === 'print-tab') {
+                populatePrintTables();
+                updatePrintStats();
+                createPrintCharts();
+                document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            }
+        }
+
+        // Populate tables
+        function populateTables() {
+            populateScannedTable();
+            populateUnscannedTable();
+        }
+
+        // Populate scanned table
+        function populateScannedTable() {
+            const tableBody = document.getElementById('scannedTableBody');
+            tableBody.innerHTML = '';
+            
+            scannedData.forEach(scan => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${scan.sNo}</td>
+                    <td>${scan.qrCodeId}</td>
+                    <td>${scan.siteName}</td>
+                    <td>${scan.zone}</td>
+                    <td>${scan.wardName}</td>
+                    <td>${scan.buildingStreet}</td>
+                    <td>${scan.category}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Populate unscanned table
+        function populateUnscannedTable() {
+            const tableBody = document.getElementById('unscannedTableBody');
+            tableBody.innerHTML = '';
+            
+            qrData.forEach(qr => {
+                // Check if this QR has been scanned
+                const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
+                
+                // If not scanned, add to table
+                if (!isScanned) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${qr.sNo}</td>
+                        <td>${qr.qrCodeId}</td>
+                        <td>${qr.siteName}</td>
+                        <td>${qr.zoneCircle}</td>
+                        <td>${qr.ward}</td>
+                        <td>${qr.buildingStreet}</td>
+                        <td>${qr.type}</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
+        }
+
+        // Populate print tables
+        function populatePrintTables() {
+            populatePrintScannedTable();
+            populatePrintUnscannedTable();
+        }
+
+        // Populate print scanned table
+        function populatePrintScannedTable() {
+            const tableBody = document.getElementById('printScannedTableBody');
+            tableBody.innerHTML = '';
+            
+            scannedData.forEach(scan => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${scan.sNo}</td>
+                    <td>${scan.qrCodeId}</td>
+                    <td>${scan.siteName}</td>
+                    <td>${scan.zone}</td>
+                    <td>${scan.wardName}</td>
+                    <td>${scan.buildingStreet}</td>
+                    <td>${scan.category}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Populate print unscanned table
+        function populatePrintUnscannedTable() {
+            const tableBody = document.getElementById('printUnscannedTableBody');
+            tableBody.innerHTML = '';
+            
+            qrData.forEach(qr => {
+                // Check if this QR has been scanned
+                const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
+                
+                // If not scanned, add to table
+                if (!isScanned) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${qr.sNo}</td>
+                        <td>${qr.qrCodeId}</td>
+                        <td>${qr.siteName}</td>
+                        <td>${qr.zoneCircle}</td>
+                        <td>${qr.ward}</td>
+                        <td>${qr.buildingStreet}</td>
+                        <td>${qr.type}</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalCount = qrData.length;
+            const scannedCount = scannedData.length;
+            const unscannedCount = totalCount - scannedCount;
+            const scanRate = totalCount > 0 ? Math.round((scannedCount / totalCount) * 100) : 0;
+            
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('scannedCount').textContent = scannedCount;
+            document.getElementById('unscannedCount').textContent = unscannedCount;
+            document.getElementById('scanRate').textContent = scanRate + '%';
+        }
+
+        // Update print statistics
+        function updatePrintStats() {
+            const totalCount = qrData.length;
+            const scannedCount = scannedData.length;
+            const unscannedCount = totalCount - scannedCount;
+            const scanRate = totalCount > 0 ? Math.round((scannedCount / totalCount) * 100) : 0;
+            
+            document.getElementById('printTotalCount').textContent = totalCount;
+            document.getElementById('printScannedCount').textContent = scannedCount;
+            document.getElementById('printUnscannedCount').textContent = unscannedCount;
+            document.getElementById('printScanRate').textContent = scanRate + '%';
+        }
+
+        // Create charts
+        function createCharts() {
+            createScanChart();
+            createZoneChart();
+        }
+
+        // Create scan chart
+        function createScanChart() {
+            const ctx = document.getElementById('scanChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (scanChart) {
+                scanChart.destroy();
+            }
+            
+            const totalCount = qrData.length;
+            const scannedCount = scannedData.length;
+            const unscannedCount = totalCount - scannedCount;
+            
+            scanChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Scanned', 'Unscanned'],
+                    datasets: [{
+                        data: [scannedCount, unscannedCount],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 99, 132, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Scan Status Distribution'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                    const value = context.raw;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create zone chart
+        function createZoneChart() {
+            const ctx = document.getElementById('zoneChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (zoneChart) {
+                zoneChart.destroy();
+            }
+            
+            // Count QR codes by zone
+            const zoneCounts = {};
+            qrData.forEach(qr => {
+                const zone = qr.zoneCircle || 'Unknown';
+                zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
+            });
+            
+            // Count scanned QR codes by zone
+            const scannedZoneCounts = {};
+            scannedData.forEach(scan => {
+                const zone = scan.zone || 'Unknown';
+                scannedZoneCounts[zone] = (scannedZoneCounts[zone] || 0) + 1;
+            });
+            
+            // Prepare chart data
+            const zones = Object.keys(zoneCounts);
+            const totalData = zones.map(zone => zoneCounts[zone]);
+            const scannedDataArray = zones.map(zone => scannedZoneCounts[zone] || 0);
+            
+            zoneChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: zones,
+                    datasets: [
+                        {
+                            label: 'Total QR Codes',
+                            data: totalData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Scanned QR Codes',
+                            data: scannedDataArray,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'QR Codes by Zone'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                    const value = context.raw;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.dataset.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create print charts
+        function createPrintCharts() {
+            createPrintScanChart();
+            createPrintZoneChart();
+        }
+
+        // Create print scan chart
+        function createPrintScanChart() {
+            const ctx = document.getElementById('printScanChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (printScanChart) {
+                printScanChart.destroy();
+            }
+            
+            const totalCount = qrData.length;
+            const scannedCount = scannedData.length;
+            const unscannedCount = totalCount - scannedCount;
+            
+            printScanChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Scanned', 'Unscanned'],
+                    datasets: [{
+                        data: [scannedCount, unscannedCount],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 99, 132, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Scan Status Distribution'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                    const value = context.raw;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create print zone chart
+        function createPrintZoneChart() {
+            const ctx = document.getElementById('printZoneChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (printZoneChart) {
+                printZoneChart.destroy();
+            }
+            
+            // Count QR codes by zone
+            const zoneCounts = {};
+            qrData.forEach(qr => {
+                const zone = qr.zoneCircle || 'Unknown';
+                zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
+            });
+            
+            // Count scanned QR codes by zone
+            const scannedZoneCounts = {};
+            scannedData.forEach(scan => {
+                const zone = scan.zone || 'Unknown';
+                scannedZoneCounts[zone] = (scannedZoneCounts[zone] || 0) + 1;
+            });
+            
+            // Prepare chart data
+            const zones = Object.keys(zoneCounts);
+            const totalData = zones.map(zone => zoneCounts[zone]);
+            const scannedDataArray = zones.map(zone => scannedZoneCounts[zone] || 0);
+            
+            printZoneChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: zones,
+                    datasets: [
+                        {
+                            label: 'Total QR Codes',
+                            data: totalData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Scanned QR Codes',
+                            data: scannedDataArray,
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'QR Codes by Zone'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                    const value = context.raw;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.dataset.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Upload file functionality
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const uploadStatus = document.getElementById('uploadStatus');
+            
+            if (!fileInput.files.length) {
+                uploadStatus.textContent = 'Please select a file to upload.';
+                uploadStatus.style.color = 'red';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const csvData = e.target.result;
+                    const lines = csvData.split('\n');
+                    
+                    // Skip header row
+                    const dataLines = lines.slice(1);
+                    
+                    // Reset scanned data
+                    scannedData = [];
+                    
+                    // Process each line
+                    dataLines.forEach(line => {
+                        if (line.trim() !== '') {
+                            // Split by comma, but be careful of quoted fields
+                            const fields = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                            if (fields && fields.length >= 3) {
+                                // Clean up quotes and whitespace
+                                const cleanedFields = fields.map(field => {
+                                    return field.trim().replace(/^"(.*)"$/, '$1');
+                                });
+                                
+                                scannedData.push({
+                                    sNo: cleanedFields[0],
+                                    scanId: cleanedFields[1],
+                                    qrCodeId: cleanedFields[2],
+                                    dateOfScan: cleanedFields[3],
+                                    siteName: cleanedFields[4],
+                                    supervisorName: cleanedFields[5],
+                                    supervisorId: cleanedFields[6],
+                                    supervisorMobile: cleanedFields[7],
+                                    wardName: cleanedFields[8],
+                                    zone: cleanedFields[9],
+                                    beforeScanTime: cleanedFields[10],
+                                    afterScanTime: cleanedFields[11],
+                                    feedback: cleanedFields[12],
+                                    landmark: cleanedFields[13],
+                                    category: cleanedFields[14],
+                                    buildingStreet: cleanedFields[15],
+                                    latitude: cleanedFields[16],
+                                    longitude: cleanedFields[17]
+                                });
+                            }
+                        }
+                    });
+                    
+                    // Update markers on map
+                    addMarkers();
+                    
+                    // Update report tables and charts
+                    populateTables();
+                    updateStats();
+                    createCharts();
+                    
+                    // Update print tables and charts if print tab is active
+                    if (document.getElementById('print-tab').classList.contains('active')) {
+                        populatePrintTables();
+                        updatePrintStats();
+                        createPrintCharts();
+                    }
+                    
+                    uploadStatus.textContent = 'File uploaded successfully! Map and report updated.';
+                    uploadStatus.style.color = 'green';
+                    
+                    // Reset file input
+                    fileInput.value = '';
+                } catch (error) {
+                    uploadStatus.textContent = 'Error processing file: ' + error.message;
+                    uploadStatus.style.color = 'red';
+                }
+            };
+            
+            reader.onerror = function() {
+                uploadStatus.textContent = 'Error reading file.';
+                uploadStatus.style.color = 'red';
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // Print report
+        function printReport() {
+            window.print();
+        }
+
+        // Export to PDF (simplified version - in a real application, you would use a library like jsPDF)
+        function exportToPDF() {
+            alert('In a real application, this would export the report to PDF. For now, please use the Print function and select "Save as PDF" in your print dialog.');
+        }
+
+        // Initialize the map markers
+        addMarkers();
+        
+        // Set default active button
+        document.getElementById('showAllBtn').classList.add('active');
+        
+        // Initialize stats
+        updateStats();
+    </script>
+</body>
+</html>
