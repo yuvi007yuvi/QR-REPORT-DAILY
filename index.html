@@ -216,6 +216,10 @@
             .print-header {
                 display: block;
             }
+            
+            #map {
+                height: 80vh !important;
+            }
         }
     </style>
 </head>
@@ -238,6 +242,7 @@
             <button class="btn" id="showAllBtn">Show All QR Codes</button>
             <button class="btn" id="showScannedBtn">Show Only Scanned</button>
             <button class="btn" id="showUnscannedBtn">Show Only Unscanned</button>
+            <button class="btn" onclick="printMapView()">Print Map View</button>
         </div>
 
         <div id="map"></div>
@@ -339,11 +344,12 @@
     <div id="print-tab" class="tab-content">
         <div class="report-container">
             <div class="print-header">
-                <img src="LOGO.png" alt="Company Logo" class="logo" style="height: 80px; display: block; margin: 0 auto 10px;">
+                <img src="LOGO.png" alt="Company Logo" class="logo"
+                    style="height: 80px; display: block; margin: 0 auto 10px;">
                 <h1>QR Data Report</h1>
                 <p>Generated on: <span id="reportDate"></span></p>
             </div>
-            
+
             <div class="stats-container">
                 <div class="stat-box">
                     <div>Total QR Codes</div>
@@ -362,15 +368,15 @@
                     <div class="stat-value" id="printScanRate">0%</div>
                 </div>
             </div>
-            
+
             <div class="chart-container">
                 <canvas id="printScanChart"></canvas>
             </div>
-            
+
             <div class="chart-container">
                 <canvas id="printZoneChart"></canvas>
             </div>
-            
+
             <h3>Scanned QR Codes</h3>
             <table class="report-table" id="printScannedTable">
                 <thead>
@@ -389,7 +395,7 @@
                     <!-- Table rows will be populated by JavaScript -->
                 </tbody>
             </table>
-            
+
             <h3>Unscanned QR Codes</h3>
             <table class="report-table" id="printUnscannedTable">
                 <thead>
@@ -408,22 +414,23 @@
                     <!-- Table rows will be populated by JavaScript -->
                 </tbody>
             </table>
-            
+
             <div class="no-print" style="text-align: center; margin-top: 20px;">
                 <button class="btn" onclick="printReport()">Print Report</button>
                 <button class="btn" onclick="exportToPDF()">Export to PDF</button>
             </div>
         </div>
     </div>
-    
+
     <div id="zone4-tab" class="tab-content">
         <div class="report-container">
             <div class="print-header">
-                <img src="LOGO.png" alt="Company Logo" class="logo" style="height: 80px; display: block; margin: 0 auto 10px;">
+                <img src="LOGO.png" alt="Company Logo" class="logo"
+                    style="height: 80px; display: block; margin: 0 auto 10px;">
                 <h1>Zone 4 - Vrindavan Report</h1>
                 <p>Generated on: <span id="zone4ReportDate"></span></p>
             </div>
-            
+
             <div class="stats-container">
                 <div class="stat-box">
                     <div>Total QR Codes</div>
@@ -442,11 +449,11 @@
                     <div class="stat-value" id="zone4ScanRate">0%</div>
                 </div>
             </div>
-            
+
             <div class="chart-container">
                 <canvas id="zone4ScanChart"></canvas>
             </div>
-            
+
             <h3>Scanned QR Codes in Zone 4</h3>
             <table class="report-table" id="zone4ScannedTable">
                 <thead>
@@ -464,7 +471,7 @@
                     <!-- Table rows will be populated by JavaScript -->
                 </tbody>
             </table>
-            
+
             <h3>Unscanned QR Codes in Zone 4</h3>
             <table class="report-table" id="zone4UnscannedTable">
                 <thead>
@@ -482,7 +489,7 @@
                     <!-- Table rows will be populated by JavaScript -->
                 </tbody>
             </table>
-            
+
             <div class="no-print" style="text-align: center; margin-top: 20px;">
                 <button class="btn" onclick="printZone4Report()">Print Zone 4 Report</button>
                 <button class="btn" onclick="exportZone4ToPDF()">Export to PDF</button>
@@ -653,12 +660,12 @@
             // Clear existing markers
             scannedMarkers.clearLayers();
             unscannedMarkers.clearLayers();
-            
+
             qrData.forEach(qr => {
                 if (qr.latitude && qr.longitude) {
                     // Check if this QR has been scanned
                     const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
-                    
+
                     // Create marker with appropriate color
                     const markerColor = isScanned ? 'green' : 'red';
                     const markerIcon = L.divIcon({
@@ -667,9 +674,9 @@
                         iconSize: [20, 20],
                         iconAnchor: [10, 10]
                     });
-                    
-                    const marker = L.marker([parseFloat(qr.latitude), parseFloat(qr.longitude)], {icon: markerIcon});
-                    
+
+                    const marker = L.marker([parseFloat(qr.latitude), parseFloat(qr.longitude)], { icon: markerIcon });
+
                     marker.bindPopup(`
                         <b>${qr.siteName}</b><br>
                         QR ID: ${qr.qrCodeId}<br>
@@ -678,16 +685,16 @@
                         Zone: ${getFullZoneName(qr.zoneCircle)}<br>
                         <button onclick="showQRDetailsInPanel('${qr.sNo}')">View Details</button>
                     `);
-                    
+
                     // Add to appropriate layer
                     if (isScanned) {
                         marker.addTo(scannedMarkers);
                     } else {
                         marker.addTo(unscannedMarkers);
                     }
-                    
+
                     // Add click event to show details
-                    marker.on('click', function() {
+                    marker.on('click', function () {
                         showQRDetails(qr);
                     });
                 }
@@ -703,22 +710,22 @@
         }
 
         // Close info panel when clicking on the map
-        map.on('click', function() {
+        map.on('click', function () {
             closeInfoPanel();
         });
 
         // Filter functionality
-        document.getElementById('showAllBtn').addEventListener('click', function() {
+        document.getElementById('showAllBtn').addEventListener('click', function () {
             showAllMarkers();
             setActiveButton(this);
         });
 
-        document.getElementById('showScannedBtn').addEventListener('click', function() {
+        document.getElementById('showScannedBtn').addEventListener('click', function () {
             showScannedMarkers();
             setActiveButton(this);
         });
 
-        document.getElementById('showUnscannedBtn').addEventListener('click', function() {
+        document.getElementById('showUnscannedBtn').addEventListener('click', function () {
             showUnscannedMarkers();
             setActiveButton(this);
         });
@@ -763,25 +770,25 @@
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Remove active class from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Show the selected tab content
             document.getElementById(tabId).classList.add('active');
-            
+
             // Set the clicked tab as active
             event.target.classList.add('active');
-            
+
             // If switching to report tab, populate the tables and charts
             if (tabId === 'report-tab') {
                 populateTables();
                 updateStats();
                 createCharts();
             }
-            
+
             // If switching to zone 4 report tab, populate the tables and charts
             if (tabId === 'zone4-tab') {
                 populateZone4Tables();
@@ -789,7 +796,7 @@
                 createZone4Charts();
                 document.getElementById('zone4ReportDate').textContent = new Date().toLocaleDateString();
             }
-            
+
             // If switching to print tab, populate the print tables and charts
             if (tabId === 'print-tab') {
                 populatePrintTables();
@@ -809,7 +816,7 @@
         function populateScannedTable() {
             const tableBody = document.getElementById('scannedTableBody');
             tableBody.innerHTML = '';
-            
+
             scannedData.forEach(scan => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -830,11 +837,11 @@
         function populateUnscannedTable() {
             const tableBody = document.getElementById('unscannedTableBody');
             tableBody.innerHTML = '';
-            
+
             qrData.forEach(qr => {
                 // Check if this QR has been scanned
                 const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
-                
+
                 // If not scanned, add to table
                 if (!isScanned) {
                     const row = document.createElement('tr');
@@ -863,7 +870,7 @@
         function populatePrintScannedTable() {
             const tableBody = document.getElementById('printScannedTableBody');
             tableBody.innerHTML = '';
-            
+
             scannedData.forEach(scan => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -884,11 +891,11 @@
         function populatePrintUnscannedTable() {
             const tableBody = document.getElementById('printUnscannedTableBody');
             tableBody.innerHTML = '';
-            
+
             qrData.forEach(qr => {
                 // Check if this QR has been scanned
                 const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
-                
+
                 // If not scanned, add to table
                 if (!isScanned) {
                     const row = document.createElement('tr');
@@ -926,7 +933,7 @@
             const scannedCount = scannedData.length;
             const unscannedCount = totalCount - scannedCount;
             const scanRate = totalCount > 0 ? Math.round((scannedCount / totalCount) * 100) : 0;
-            
+
             document.getElementById('printTotalCount').textContent = totalCount;
             document.getElementById('printScannedCount').textContent = scannedCount;
             document.getElementById('printUnscannedCount').textContent = unscannedCount;
@@ -943,10 +950,10 @@
         function populateZone4ScannedTable() {
             const tableBody = document.getElementById('zone4ScannedTableBody');
             tableBody.innerHTML = '';
-            
+
             // Filter scanned data for Zone 4 only
             const zone4ScannedData = scannedData.filter(scan => scan.zone === "4");
-            
+
             zone4ScannedData.forEach(scan => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -966,14 +973,14 @@
         function populateZone4UnscannedTable() {
             const tableBody = document.getElementById('zone4UnscannedTableBody');
             tableBody.innerHTML = '';
-            
+
             // Filter QR data for Zone 4 only
             const zone4QrData = qrData.filter(qr => qr.zoneCircle === "4");
-            
+
             zone4QrData.forEach(qr => {
                 // Check if this QR has been scanned
                 const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
-                
+
                 // If not scanned, add to table
                 if (!isScanned) {
                     const row = document.createElement('tr');
@@ -996,12 +1003,12 @@
             // Filter data for Zone 4 only
             const zone4QrData = qrData.filter(qr => qr.zoneCircle === "4");
             const zone4ScannedData = scannedData.filter(scan => scan.zone === "4");
-            
+
             const totalCount = zone4QrData.length;
             const scannedCount = zone4ScannedData.length;
             const unscannedCount = totalCount - scannedCount;
             const scanRate = totalCount > 0 ? Math.round((scannedCount / totalCount) * 100) : 0;
-            
+
             document.getElementById('zone4TotalCount').textContent = totalCount;
             document.getElementById('zone4ScannedCount').textContent = scannedCount;
             document.getElementById('zone4UnscannedCount').textContent = unscannedCount;
@@ -1016,20 +1023,20 @@
         // Create Zone 4 scan chart
         function createZone4ScanChart() {
             const ctx = document.getElementById('zone4ScanChart').getContext('2d');
-            
+
             // Destroy existing chart if it exists
             if (window.zone4ScanChart) {
                 window.zone4ScanChart.destroy();
             }
-            
+
             // Filter data for Zone 4 only
             const zone4QrData = qrData.filter(qr => qr.zoneCircle === "4");
             const zone4ScannedData = scannedData.filter(scan => scan.zone === "4");
-            
+
             const totalCount = zone4QrData.length;
             const scannedCount = zone4ScannedData.length;
             const unscannedCount = totalCount - scannedCount;
-            
+
             window.zone4ScanChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
@@ -1061,7 +1068,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
                                     const value = context.raw;
                                     const percentage = ((value / total) * 100).toFixed(1);
@@ -1083,6 +1090,14 @@
         function exportZone4ToPDF() {
             alert('In a real application, this would export the Zone 4 report to PDF. For now, please use the Print function and select "Save as PDF" in your print dialog.');
         }
+
+        // Print map view
+        function printMapView() {
+            window.print();
+        }
+
+        // Initialize the map markers
+        addMarkers();
 
         // Create print charts
         function createPrintCharts() {
@@ -1150,31 +1165,31 @@
         // Create print zone chart
         function createPrintZoneChart() {
             const ctx = document.getElementById('printZoneChart').getContext('2d');
-            
+
             // Destroy existing chart if it exists
             if (printZoneChart) {
                 printZoneChart.destroy();
             }
-            
+
             // Count QR codes by zone
             const zoneCounts = {};
             qrData.forEach(qr => {
                 const zone = getFullZoneName(qr.zoneCircle) || 'Unknown';
                 zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
             });
-            
+
             // Count scanned QR codes by zone
             const scannedZoneCounts = {};
             scannedData.forEach(scan => {
                 const zone = getFullZoneName(scan.zone) || 'Unknown';
                 scannedZoneCounts[zone] = (scannedZoneCounts[zone] || 0) + 1;
             });
-            
+
             // Prepare chart data
             const zones = Object.keys(zoneCounts);
             const totalData = zones.map(zone => zoneCounts[zone]);
             const scannedDataArray = zones.map(zone => scannedZoneCounts[zone] || 0);
-            
+
             printZoneChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1210,7 +1225,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
                                     const value = context.raw;
                                     const percentage = ((value / total) * 100).toFixed(1);
@@ -1297,31 +1312,31 @@
         // Create zone chart
         function createZoneChart() {
             const ctx = document.getElementById('zoneChart').getContext('2d');
-            
+
             // Destroy existing chart if it exists
             if (zoneChart) {
                 zoneChart.destroy();
             }
-            
+
             // Count QR codes by zone
             const zoneCounts = {};
             qrData.forEach(qr => {
                 const zone = getFullZoneName(qr.zoneCircle) || 'Unknown';
                 zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
             });
-            
+
             // Count scanned QR codes by zone
             const scannedZoneCounts = {};
             scannedData.forEach(scan => {
                 const zone = getFullZoneName(scan.zone) || 'Unknown';
                 scannedZoneCounts[zone] = (scannedZoneCounts[zone] || 0) + 1;
             });
-            
+
             // Prepare chart data
             const zones = Object.keys(zoneCounts);
             const totalData = zones.map(zone => zoneCounts[zone]);
             const scannedDataArray = zones.map(zone => scannedZoneCounts[zone] || 0);
-            
+
             zoneChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1357,7 +1372,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
                                     const value = context.raw;
                                     const percentage = ((value / total) * 100).toFixed(1);
@@ -1399,52 +1414,6 @@
             createCharts();
             createPrintCharts();
             createZone4Charts();
-        }
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Scanned QR Codes',
-                            data: scannedDataArray,
-                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'QR Codes by Zone'
-                        },
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                                    const value = context.raw;
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${context.dataset.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
         }
 
         // Upload file functionality
@@ -1549,6 +1518,16 @@
         // Export to PDF (simplified version - in a real application, you would use a library like jsPDF)
         function exportToPDF() {
             alert('In a real application, this would export the report to PDF. For now, please use the Print function and select "Save as PDF" in your print dialog.');
+        }
+
+        // Print Zone 4 report
+        function printZone4Report() {
+            window.print();
+        }
+
+        // Export Zone 4 to PDF (simplified version)
+        function exportZone4ToPDF() {
+            alert('In a real application, this would export the Zone 4 report to PDF. For now, please use the Print function and select "Save as PDF" in your print dialog.');
         }
 
         // Initialize the map markers
