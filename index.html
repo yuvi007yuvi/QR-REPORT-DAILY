@@ -36,8 +36,19 @@
         }
 
         #map {
-            height: 60vh;
+            height: 90vh;
             width: 100%;
+            transition: height 0.3s ease;
+        }
+
+        #map.fullscreen-map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            margin: 0;
         }
 
         .info-panel {
@@ -68,6 +79,41 @@
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             z-index: 1000;
+        }
+
+        .fullscreen-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+
+        #map-tab {
+            position: relative;
+        }
+
+        .fullscreen-toggle:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .hidden-for-fullscreen {
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden-for-fullscreen.hide {
+            display: none !important;
         }
 
         .legend-item {
@@ -252,6 +298,7 @@
             border-radius: 6px 6px 0 0;
             font-size: 24px;
             font-weight: bold;
+            text-align: center;
         }
 
         .zone-stats {
@@ -321,7 +368,7 @@
             }
             
             #map {
-                height: 80vh !important;
+                height: 100vh !important;
             }
 
             .zone-section {
@@ -405,12 +452,12 @@
 </head>
 
 <body>
-    <div class="header">
+    <div class="header hidden-for-fullscreen">
         <img src="LOGO.png" alt="Company Logo" class="logo">
         <span>QR Data Map Portal</span>
     </div>
 
-    <div class="tabs no-print">
+    <div class="tabs no-print hidden-for-fullscreen">
         <div class="tab active" onclick="showTab('map-tab')">Map View</div>
         <div class="tab" onclick="showTab('report-tab')">Reports</div>
         <div class="tab" onclick="showTab('zone4-tab')">Zone 4 Report</div>
@@ -420,7 +467,9 @@
     </div>
 
     <div id="map-tab" class="tab-content active">
-        <div class="controls no-print">
+        <button class="fullscreen-toggle" id="fullscreenBtn" onclick="toggleFullScreen()">Full Screen Map</button>
+        
+        <div class="controls no-print hidden-for-fullscreen">
             <button class="btn" id="showAllBtn">Show All QR Codes</button>
             <button class="btn" id="showScannedBtn">Show Only Scanned</button>
             <button class="btn" id="showUnscannedBtn">Show Only Unscanned</button>
@@ -1889,6 +1938,57 @@ This will create a PDF file of the ${zoneName} report.`);
 
         // Initialize the map markers
         addMarkers();
+
+        // Full screen map toggle
+        let isFullScreen = false;
+
+        function toggleFullScreen() {
+            const mapElement = document.getElementById('map');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const hiddenElements = document.querySelectorAll('.hidden-for-fullscreen');
+            
+            isFullScreen = !isFullScreen;
+            
+            if (isFullScreen) {
+                // Enter fullscreen mode
+                mapElement.classList.add('fullscreen-map');
+                fullscreenBtn.textContent = 'Exit Full Screen';
+                
+                // Hide other elements
+                hiddenElements.forEach(el => {
+                    if (!el.classList.contains('fullscreen-toggle')) {
+                        el.classList.add('hide');
+                    }
+                });
+                
+                // Disable body scroll
+                document.body.style.overflow = 'hidden';
+            } else {
+                // Exit fullscreen mode
+                mapElement.classList.remove('fullscreen-map');
+                fullscreenBtn.textContent = 'Full Screen Map';
+                
+                // Show other elements
+                hiddenElements.forEach(el => {
+                    el.classList.remove('hide');
+                });
+                
+                // Enable body scroll
+                document.body.style.overflow = 'auto';
+            }
+            
+            // Invalidate map size to ensure proper rendering
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+
+        // Exit fullscreen on ESC key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && isFullScreen) {
+                toggleFullScreen();
+            }
+        });
 
         // Create print charts
         function createPrintCharts() {
