@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Chart.js for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2canvas for image export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -321,6 +323,83 @@
             #map {
                 height: 80vh !important;
             }
+
+            .zone-section {
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+
+            .zone-section:last-child {
+                page-break-after: auto;
+            }
+
+            /* Preserve all colors in print */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            .zone-header {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .zone-stat-box {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .zone-section h3,
+            .zone-section h4 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .report-table th {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .report-table tr:nth-child(even),
+            .report-table tr:nth-child(odd) {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .status-scanned,
+            .status-unscanned {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .stat-box {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .print-header {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Ensure tables don't break across pages */
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            tfoot {
+                display: table-footer-group;
+            }
         }
     </style>
 </head>
@@ -552,6 +631,7 @@
                 </select>
                 <button class="btn" onclick="printSelectedZone()">Print Selected Zone</button>
                 <button class="btn" onclick="exportZoneToPDF()">Export to PDF</button>
+                <button class="btn" onclick="saveAsImage()">Save as Image</button>
             </div>
 
             <!-- BHARAT Zone -->
@@ -1562,13 +1642,14 @@
             document.getElementById(`${zoneName}Unscanned`).textContent = unscannedCount;
             document.getElementById(`${zoneName}ScanRate`).textContent = scanRate + '%';
 
-            // Populate scanned table
+            // Populate scanned table with sequential numbering
             const scannedBody = document.getElementById(`${zoneName}ScannedBody`);
             scannedBody.innerHTML = '';
+            let scannedSerialNum = 1;
             zoneScannedData.forEach(scan => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${scan.sNo}</td>
+                    <td>${scannedSerialNum++}</td>
                     <td>${scan.qrCodeId}</td>
                     <td>${scan.siteName}</td>
                     <td>${scan.wardName}</td>
@@ -1578,15 +1659,16 @@
                 scannedBody.appendChild(row);
             });
 
-            // Populate unscanned table
+            // Populate unscanned table with sequential numbering
             const unscannedBody = document.getElementById(`${zoneName}UnscannedBody`);
             unscannedBody.innerHTML = '';
+            let unscannedSerialNum = 1;
             zoneQRData.forEach(qr => {
                 const isScanned = scannedData.some(scan => scan.qrCodeId === qr.qrCodeId);
                 if (!isScanned) {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${qr.sNo}</td>
+                        <td>${unscannedSerialNum++}</td>
                         <td>${qr.qrCodeId}</td>
                         <td>${qr.siteName}</td>
                         <td>${qr.ward}</td>
@@ -1667,6 +1749,127 @@
 4. Click Save
 
 This will create a PDF file of the ${zoneName} report.`);
+        }
+
+        // Save zone report as image
+        async function saveAsImage() {
+            const selector = document.getElementById('zoneSelector');
+            const selectedZone = selector.value;
+            
+            if (selectedZone === 'all') {
+                // Save all zones as separate images
+                await saveAllZonesAsImages();
+            } else {
+                // Save selected zone as image
+                await saveZoneAsImage(selectedZone);
+            }
+        }
+
+        // Save a single zone as image
+        async function saveZoneAsImage(zoneId) {
+            const element = document.getElementById(zoneId);
+            if (!element) {
+                alert('Zone not found!');
+                return;
+            }
+
+            try {
+                // Create a container with header and zone content
+                const container = document.createElement('div');
+                container.style.padding = '20px';
+                container.style.backgroundColor = '#ffffff';
+                container.style.width = element.offsetWidth + 'px';
+                
+                // Add header with logo
+                const header = document.createElement('div');
+                header.style.textAlign = 'center';
+                header.style.marginBottom = '20px';
+                header.style.padding = '20px';
+                header.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                header.style.borderRadius = '10px';
+                
+                // Add logo
+                const logo = document.querySelector('.logo');
+                if (logo) {
+                    const logoClone = logo.cloneNode(true);
+                    logoClone.style.height = '80px';
+                    logoClone.style.display = 'block';
+                    logoClone.style.margin = '0 auto 10px';
+                    header.appendChild(logoClone);
+                }
+                
+                // Add title
+                const title = document.createElement('h1');
+                title.textContent = `${zoneId.toUpperCase()} Zone Report`;
+                title.style.color = 'white';
+                title.style.margin = '10px 0';
+                title.style.fontSize = '32px';
+                title.style.textAlign = 'center';
+                title.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.3)';
+                header.appendChild(title);
+                
+                // Add date
+                const dateP = document.createElement('p');
+                dateP.textContent = `Generated on: ${new Date().toLocaleDateString()}`;
+                dateP.style.color = '#f0f0f0';
+                dateP.style.fontSize = '16px';
+                dateP.style.textAlign = 'center';
+                dateP.style.margin = '5px 0';
+                header.appendChild(dateP);
+                
+                container.appendChild(header);
+                
+                // Clone the zone content
+                const zoneClone = element.cloneNode(true);
+                container.appendChild(zoneClone);
+                
+                // Temporarily add to body (hidden)
+                container.style.position = 'absolute';
+                container.style.left = '-9999px';
+                document.body.appendChild(container);
+                
+                // Capture the container as canvas
+                const canvas = await html2canvas(container, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: false
+                });
+                
+                // Remove temporary container
+                document.body.removeChild(container);
+
+                // Convert canvas to blob and download
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const zoneName = zoneId.toUpperCase();
+                    const date = new Date().toISOString().split('T')[0];
+                    link.download = `${zoneName}_Zone_Report_${date}.png`;
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                });
+
+                alert(`${zoneId.toUpperCase()} Zone report saved as image!`);
+            } catch (error) {
+                console.error('Error saving image:', error);
+                alert('Error saving image. Please try again.');
+            }
+        }
+
+        // Save all zones as separate images
+        async function saveAllZonesAsImages() {
+            const zones = ['bharat', 'nishant', 'ranveer', 'abhinav'];
+            
+            for (let i = 0; i < zones.length; i++) {
+                await saveZoneAsImage(zones[i]);
+                // Add a small delay between saves
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            alert('All zone reports have been saved as images!');
         }
 
         // Print Zone 4 report
